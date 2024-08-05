@@ -169,10 +169,17 @@ def calculate_unspent_interest(path: str):
             if interest[acquire_date][in_currency] - in_amount < 0:
                 continue
             interest[acquire_date][in_currency] -= in_amount
-   
-    print("Unspent tokens earned from interest:")
+
+    unspent_interest = {}
     for date, v in interest.items():
         for token, value in v.items():
+            if token not in unspent_interest:
+                unspent_interest[token] = value
+            else:
+                unspent_interest[token] += value
+   
+    print("Unspent tokens earned from interest:")
+    for token, value in unspent_interest.items():
             print("  " + token + ": " + str(value))
 
         
@@ -301,7 +308,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    #main()
+    calculate_unspent_interest("test.csv")
 
 
 
