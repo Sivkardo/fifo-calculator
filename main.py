@@ -155,15 +155,15 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-f', '--fifo', action="store_true", help="Generates FIFO output and calculates income and expenses.")
-    parser.add_argument('-g', '--generatecsv', action="store_true", help='Generates csv from excel file (used as input to fifoator app).')
-    parser.add_argument('-o', '--output', help='Name of output CSV file.')
+    parser.add_argument('-g', '--generate', action="store_true", help='Generates csv from excel file (used as input to fifoator app).')
 
     parser.add_argument('-c', '--concatenate', action="store_true", help='Concatenates multiple csv files into a single file.')
     parser.add_argument('-s', '--sheet', nargs='+', help="Single or multiple sheet names. Make sure the order of sheets corresponds to header row index number.")
     parser.add_argument('-r', '--row', nargs='+', help='Row index or indices of transaction header in excel file. Make sure the order of indices corresponds to sheet name.')
 
     parser.add_argument('-e', '--excel', help='Path to excel file.')
-    parser.add_argument('--csv', nargs='+', help='Path(s) to csv file(s). If multiple files are given, they will be processed separately, unless `-c` flag is activated.')
+    parser.add_argument('-v', '--csv', nargs='+', help='Path(s) to csv file(s).')
+    parser.add_argument('-o', '--output', help='Name of output CSV file.')
 
     args = parser.parse_args()
 
@@ -215,7 +215,7 @@ def main():
             
 
     # User only wants to generate CSV file from excel file
-    elif args.generatecsv:
+    elif args.generate:
 
         # Check if excel file is provided, generate CSV files from provided excel file
         if args.excel:
