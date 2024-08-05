@@ -18,6 +18,12 @@ DOWNLOAD_WAIT_TIME = 0.2
 # Download folder path
 BROWSER_DOWNLOADS_PATH = os.path.abspath(os.environ["Download"])
 
+# Interest transaction types
+INTEREST_TRANS_TYPE = ("Interest", "Staking Rewards")
+
+# Interest key word
+INTEREST = "INTEREST"
+
 # Column indices in excel file (first column = 1)
 DATE = 2
 TRANS_TYPE = 3

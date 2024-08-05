@@ -48,11 +48,14 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
         #if transaction[utils.TRANS_TYPE] == "Lock":
         #   continue
 
+        note = transaction[utils.NOTE]
         input_amount = transaction[utils.INPUT_AMOUNT]
         input_currency = transaction[utils.INPUT_CURR]
         output_amount = transaction[utils.OUTPUT_AMOUNT]
         output_currency = transaction[utils.OUTPUT_CURR]
 
+        if transaction[utils.TRANS_TYPE] in utils.INTEREST_TRANS_TYPE:
+            note += (" - " + utils.INTEREST)
         if input_currency == output_currency:
             input_amount = input_amount - output_amount
             output_amount = 0
@@ -66,7 +69,7 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
             output_amount = 0
             output_currency = "EUR"
             
-        csv_row = (transaction[utils.DATE], transaction[utils.NOTE], 
+        csv_row = (transaction[utils.DATE], note, 
                    input_amount, input_currency,
                    output_amount, output_currency)
         
@@ -105,12 +108,10 @@ def generate_fifo_output(csv_path: str):
 
     file_input = driver.find_element(By.ID, 'file')
     file_input.send_keys(csv_path)
-    print("File uploaded...")
 
     # Wait for the processed file to download before closing browser
     time.sleep(utils.DOWNLOAD_WAIT_TIME)
 
-    print("Quitting driver...")
     driver.quit()
 
 
@@ -130,6 +131,51 @@ def calculate_income_and_expenses(path: str):
 
     print("Prihod: ", income)
     print("Rashod: ", expenses)
+
+def calculate_unspent_interest(path: str):
+    """
+    Calculates unspent interest.
+
+    Args:
+        path (str): path to FIFO app output
+    """
+
+    interest = {}
+
+    csv = pd.read_csv(path)
+    for _, row in csv.iterrows():
+        date = row['datum']
+        in_currency = row["početna valuta"]
+        in_amount = row["početni iznos"]
+        out_currency = row['završna valuta']
+        out_amount = row['završni iznos']
+
+        acquire_date = row['datum nabave']
+
+        if utils.INTEREST in row['opis']:
+            if date not in interest:
+                interest[date] = {}
+            if out_currency not in interest[date]:
+                interest[date][out_currency] = 0 
+            interest[date][out_currency] += out_amount
+
+        if acquire_date in interest and in_currency in interest[acquire_date]:
+            # Do not count locking tokens
+            if in_amount == out_amount:
+                continue
+            #print(str(acquire_date) + str(in_currency) + ", " + str(in_amount))
+
+            # Tokens from other transactions are being spent
+            if interest[acquire_date][in_currency] - in_amount < 0:
+                continue
+            interest[acquire_date][in_currency] -= in_amount
+   
+    print("Unspent tokens earned from interest:")
+    for date, v in interest.items():
+        for token, value in v.items():
+            print("  " + token + ": " + str(value))
+
+        
 
 
 def concatenate_csv(csv_paths: list, filename: str):
@@ -212,6 +258,7 @@ def main():
         # Calculate income and expenses
         fifo_output_path = utils.BROWSER_DOWNLOADS_PATH + os.sep + out_name + "-FIFO.csv" 
         calculate_income_and_expenses(path=fifo_output_path)
+        calculate_unspent_interest(path=fifo_output_path)
             
 
     # User only wants to generate CSV file from excel file
