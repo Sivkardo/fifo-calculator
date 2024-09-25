@@ -9,6 +9,65 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 
 
+def validate_transaction_data(transaction: pd.DataFrame, sheet: str):
+    """Validates given transaction by checking for specific cases.
+        It checks for empty values, negative values and incorrect formating.
+    Args:
+        transaction (Pandas): transaction tuple
+        sheet (str): sheet name
+
+    """
+
+    order = transaction[utils.ORDER]
+    note = transaction[utils.NOTE]
+    date = transaction[utils.DATE]
+    transaction_type = transaction[utils.TRANS_TYPE]
+    input_amount = transaction[utils.INPUT_AMOUNT]
+    input_currency = transaction[utils.INPUT_CURR]
+    output_amount = transaction[utils.OUTPUT_AMOUNT]
+    output_currency = transaction[utils.OUTPUT_CURR]
+
+    # TODO (avoid so many ifs?)
+    # Checks for missing values
+    if pd.isna(date):
+        raise Exception("DATE is missing in transaction order {}, sheet {}".format(order, sheet))
+    if pd.isna(transaction_type):
+        raise Exception("TRANSACTION TYPE is missing in transaction order {}, sheet {}".format(order, sheet))
+    if pd.isna(input_currency):
+        raise Exception("INPUT CURRENCY is missing in transaction order {}, sheet {}".format(order, sheet))
+    if pd.isna(input_amount):
+        raise Exception("INPUT AMOUNT is missing in transaction order {}, sheet {}".format(order, sheet))
+    if pd.isna(output_currency):
+        raise Exception("OUTPUT CURRENCY is missing in transaction order {}, sheet {}".format(order, sheet))
+    if pd.isna(output_amount):
+        raise Exception("OUTPUT AMOUNT is missing in transaction order {}, sheet {}".format(order, sheet))
+    if pd.isna(note):
+        raise Exception("NOTE is missing in transaction order {}, sheet {}".format(order, sheet))
+    
+    # Check if input and output amounts are numeric values
+    try:
+        pd.to_numeric(input_amount)
+    except:
+        raise Exception("INPUT CURRENCY is not a numeric value in transaction order {}, sheet {}".format(order, sheet))
+    try:
+        pd.to_numeric(output_amount)
+    except:
+        raise Exception("OUTPUT CURRENCY is not a numeric value in transaction order {}, sheet {}".format(order, sheet))
+    
+    # Checks for negative values
+    if input_amount < 0:
+        raise Exception("INPUT AMOUNT is negative in transaction {}, sheet {}".format(order, sheet))
+    if output_amount < 0:
+        raise Exception("OUTPUT AMOUNT is negative in transaction {}, sheet {}".format(order, sheet))
+    
+    # Check if date is in correct format, override default exception for readability
+    try:
+        pd.to_datetime(date)
+    except:
+        raise Exception("Incorrect format of DATE in transaction order {}, sheet {}".format(order, sheet))
+    
+    
+
 def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int, filename: str):
     """
     Generates a CSV file from provided excel file.
@@ -29,6 +88,9 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
     empty_row_index = balances['Date'].isna().idxmax()
     balances = balances.iloc[:empty_row_index]
 
+    for transaction in balances.itertuples():
+        validate_transaction_data(transaction=transaction, sheet=sheet)
+
     # Format the date from excel file to 'YYYY-MM-DD'
     balances['Date'] = pd.to_datetime(balances['Date'])
     balances['Date'] = balances['Date'].dt.strftime('%Y-%m-%d')
@@ -44,15 +106,23 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
     data = []
     for transaction in balances.itertuples():
 
-        # (???)
-        #if transaction[utils.TRANS_TYPE] == "Lock":
-        #   continue
-
+        order = transaction[utils.ORDER]
         note = transaction[utils.NOTE]
+        date = transaction[utils.DATE]
         input_amount = transaction[utils.INPUT_AMOUNT]
         input_currency = transaction[utils.INPUT_CURR]
         output_amount = transaction[utils.OUTPUT_AMOUNT]
         output_currency = transaction[utils.OUTPUT_CURR]
+
+        # Check if dates are in ascending order
+        if order == 1:
+            previous_date = date
+            previous_order = order
+        else:
+            if previous_date > date:
+                raise Exception("DATE in transaction {} is smaller than in transaction {}!".format(order, previous_order))
+            
+        
 
         if transaction[utils.TRANS_TYPE] in utils.INTEREST_TRANS_TYPE:
             note += (" - " + utils.INTEREST)
@@ -69,7 +139,7 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
             output_amount = 0
             output_currency = "EUR"
             
-        csv_row = (transaction[utils.DATE], note, 
+        csv_row = (date, note, 
                    input_amount, input_currency,
                    output_amount, output_currency)
         
@@ -77,60 +147,6 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
         
     pd.DataFrame(data).to_csv("{}.csv".format(filename), index=False, header=True)
 
-
-
-def generate_fifo_output(csv_path: str):
-    """
-    Generates FIFO output using provided CSV.
-    The function calls the FIFO app and uploads the provided CSV file.
-    FIFO app automatically downloads the file to the default downloads directory.
-
-    Args:
-        path (str): path to CSV file
-    """
-
-    if utils.USER_BROWSER == "safari":
-        # headless mode not available for safari ¯\_(ツ)_/¯
-        driver = webdriver.Safari()
-    elif utils.USER_BROWSER == "firefox":
-        firefox_options = Options()
-        firefox_options.add_argument("--headless")
-        driver = webdriver.Firefox(options=firefox_options)
-
-    driver.get(utils.FIFOATOR_URL)
-
-    # Wait for the page to fully load
-    time.sleep(utils.PAGE_LOAD_TIME)
-
-    # Accept the "terms of service"
-    checkbox = driver.find_element(By.ID, 'terms')
-    checkbox.click()
-
-    file_input = driver.find_element(By.ID, 'file')
-    file_input.send_keys(csv_path)
-
-    # Wait for the processed file to download before closing browser
-    time.sleep(utils.DOWNLOAD_WAIT_TIME)
-
-    driver.quit()
-
-
-def calculate_income_and_expenses(path: str):
-    """
-    Calculates income and expenses using FIFO app output file.
-
-    Args:
-        path (str): path to FIFO app output
-    """
-
-    fifo_output = pd.read_csv(path)
-    fifo_output['profit'] = pd.to_numeric(fifo_output['profit'])
-
-    income = fifo_output['profit'].dropna()[fifo_output['profit'] > 0].sum()
-    expenses = fifo_output['profit'].dropna()[fifo_output['profit'] < 0].sum()
-
-    print("Prihod: ", income)
-    print("Rashod: ", expenses)
 
 def calculate_unspent_interest(path: str):
     """
@@ -163,7 +179,6 @@ def calculate_unspent_interest(path: str):
             # Do not count locking tokens
             if in_amount == out_amount:
                 continue
-            #print(str(acquire_date) + str(in_currency) + ", " + str(in_amount))
 
             # Tokens from other transactions are being spent
             if interest[acquire_date][in_currency] - in_amount < 0:
@@ -183,7 +198,6 @@ def calculate_unspent_interest(path: str):
             print("  " + token + ": " + str(value))
 
         
-
 
 def concatenate_csv(csv_paths: list, filename: str):
     """
@@ -207,16 +221,17 @@ def main():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-f', '--fifo', action="store_true", help="Generates FIFO output and calculates income and expenses.")
     parser.add_argument('-g', '--generate', action="store_true", help='Generates csv from excel file (used as input to fifoator app).')
+    parser.add_argument('-u', '--unspent', help="Calculates unspent tokens received from interest (takes FIFO output as input file)")
 
-    parser.add_argument('-c', '--concatenate', action="store_true", help='Concatenates multiple csv files into a single file.')
+    parser.add_argument('-c', '--concatenate', action="store_true", help='Concatenates multiple csv files into a single file. Used if user has multiple CSV files which he wants to concatenate.')
     parser.add_argument('-s', '--sheet', nargs='+', help="Single or multiple sheet names. Make sure the order of sheets corresponds to header row index number.")
     parser.add_argument('-r', '--row', nargs='+', help='Row index or indices of transaction header in excel file. Make sure the order of indices corresponds to sheet name.')
 
     parser.add_argument('-e', '--excel', help='Path to excel file.')
     parser.add_argument('-v', '--csv', nargs='+', help='Path(s) to csv file(s).')
     parser.add_argument('-o', '--output', help='Name of output CSV file.')
+    parser.add_argument('-t', '--temporary', help="Keep temporary files (CSV files that are concatenated into the final file).")
 
     args = parser.parse_args()
 
@@ -227,49 +242,9 @@ def main():
     else:
         out_name = time.strftime("%Y%m%d-%H%M%S")
     
-
-    # User wants FIFO output, including income and expense data
-    if args.fifo:
-
-        # Check if excel file is provided, generate CSV files from provided excel file
-        if args.excel:
-
-            # Check if needed arguments are provided (SHEET + ROW) and their length is equal
-            if not args.sheet:
-                raise Exception("No sheet names were provided!")
             
-            if not args.row:
-                raise Exception("Index of header row wasn't provided!")
-            
-            if len(args.sheet) != len(args.row):
-                raise Exception("Number of sheets and indices should be equal: {} != {}".format(len(args.sheet), len(args.row)))
-            
-            # Generate needed CSV files
-            files = []
-            for sheet, index, file_num in zip(args.sheet, args.row, range(len(args.sheet))):
-                filename = out_name + str(file_num)
-                generate_transaction_csv(excel_path=args.excel, sheet=sheet, header_row_index=int(index), filename=filename)
-                files.append(filename + ".csv")
-
-        # Check if instead of an excel file, a CSV file is provided
-        elif args.csv:
-            files = args.csv
-
-        # Concatenate CSV files into a single file that will be fed into FIFO app
-        concatenate_csv(csv_paths=files, filename=out_name)
-
-        # Generate FIFO output
-        file_path = os.path.abspath(out_name + ".csv")
-        generate_fifo_output(file_path)
-
-        # Calculate income and expenses
-        fifo_output_path = utils.BROWSER_DOWNLOADS_PATH + os.sep + out_name + "-FIFO.csv" 
-        calculate_income_and_expenses(path=fifo_output_path)
-        calculate_unspent_interest(path=fifo_output_path)
-            
-
     # User only wants to generate CSV file from excel file
-    elif args.generate:
+    if args.generate:
 
         # Check if excel file is provided, generate CSV files from provided excel file
         if args.excel:
@@ -291,9 +266,12 @@ def main():
                 generate_transaction_csv(excel_path=args.excel, sheet=sheet, header_row_index=int(index), filename=filename)
                 files.append(filename + ".csv")
 
-            if args.concatenate:
-                # Concatenate CSV files into a single file
-                concatenate_csv(csv_paths=files, filename=out_name)
+            
+            # Concatenate CSV files into a single file
+            concatenate_csv(csv_paths=files, filename=out_name)
+            if not args.temporary:
+                for file in files:
+                    os.remove(file)
 
         else:
             raise Exception("Missing excel file path!")
@@ -306,10 +284,13 @@ def main():
         # Concatenate CSV files into a single file
         concatenate_csv(csv_paths=args.csv, filename=out_name)
 
+    elif args.unspent:
+        # TODO fix calculation method
+        temp = 5
+
 
 if __name__ == "__main__":
-    #main()
-    calculate_unspent_interest("test.csv")
+    main()
 
 
 

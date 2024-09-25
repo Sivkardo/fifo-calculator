@@ -25,6 +25,7 @@ INTEREST_TRANS_TYPE = ("Interest", "Staking Rewards")
 INTEREST = "INTEREST"
 
 # Column indices in excel file (first column = 1)
+ORDER = 1
 DATE = 2
 TRANS_TYPE = 3
 INPUT_CURR = 4
