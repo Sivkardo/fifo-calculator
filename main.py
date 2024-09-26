@@ -285,8 +285,7 @@ def main():
         concatenate_csv(csv_paths=args.csv, filename=out_name)
 
     elif args.unspent:
-        # TODO fix calculation method
-        temp = 5
+        calculate_unspent_interest(args.unspent)
 
 
 if __name__ == "__main__":
