@@ -6,6 +6,8 @@ INTEREST_TRANS_TYPE = ("Interest", "Staking Rewards")
 # Interest key word
 INTEREST = "INTEREST"
 
+SHEET_DATE_FORMAT = "%Y-%m-%d"
+
 # Column indices in excel file (first column = 1)
 ORDER = 1
 DATE = 2

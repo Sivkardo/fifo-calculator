@@ -4,6 +4,7 @@ import time
 import argparse
 import os
 import sys
+from datetime import datetime
 
 def graceful_exit(message: str):
     """
@@ -97,9 +98,8 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
     for transaction in balances.itertuples():
         validate_transaction_data(transaction=transaction, sheet=sheet)
 
-    # Format the date from excel file to 'YYYY-MM-DD'
-    balances['Date'] = pd.to_datetime(balances['Date'])
-    balances['Date'] = balances['Date'].dt.strftime('%Y-%m-%d')
+    # Format the date from excel file to 'DD-Mon-YYYY' format
+    balances['Date'] = pd.to_datetime(balances['Date'], format=utils.SHEET_DATE_FORMAT)
 
     # Map the fiat currency to a proper ISO 4217 format
     currency_mapping = {
@@ -127,11 +127,9 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
             previous_order = order
         else:
             if previous_date > date:
-                graceful_exit("DATE in transaction {} is smaller than in transaction {}, sheet {}!".format(order, previous_order, sheet))
+                graceful_exit("DATE '{}' in transaction {} is smaller than date '{}' in transaction {}, sheet {}!".format(date, order, previous_date, previous_order, sheet))
             previous_date = date
             previous_order = order
-            
-        
 
         if transaction[utils.TRANS_TYPE] in utils.INTEREST_TRANS_TYPE:
             note += (" - " + utils.INTEREST)
@@ -249,7 +247,7 @@ def main():
     if args.output:
         out_name = args.output
     else:
-        out_name = time.strftime("%Y%m%d-%H%M%S")
+        out_name = datetime.now().strftime("%Y%m%d-%H%M%S")
     
             
     # User only wants to generate CSV file from excel file
