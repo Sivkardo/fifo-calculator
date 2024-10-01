@@ -15,9 +15,6 @@ PAGE_LOAD_TIME = 1
 # Seconds waiting for FIFO output to download
 DOWNLOAD_WAIT_TIME = 0.2
 
-# Download folder path
-BROWSER_DOWNLOADS_PATH = os.path.abspath(os.environ["Download"])
-
 # Interest transaction types
 INTEREST_TRANS_TYPE = ("Interest", "Staking Rewards")
 

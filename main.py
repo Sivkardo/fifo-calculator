@@ -4,10 +4,6 @@ import time
 import argparse
 import os
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
-
 
 def validate_transaction_data(transaction: pd.DataFrame, sheet: str):
     """Validates given transaction by checking for specific cases.
@@ -67,6 +63,7 @@ def validate_transaction_data(transaction: pd.DataFrame, sheet: str):
         raise Exception("Incorrect format of DATE in transaction order {}, sheet {}".format(order, sheet))
     
     
+    
 
 def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int, filename: str):
     """
@@ -98,6 +95,7 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
     # Map the fiat currency to a proper ISO 4217 format
     currency_mapping = {
         'EURO (fiat)': 'EUR',
+        'USD (fiat)': 'USD',
     }
 
     balances['Input Currency'] = balances['Input Currency'].replace(currency_mapping)
@@ -120,7 +118,9 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
             previous_order = order
         else:
             if previous_date > date:
-                raise Exception("DATE in transaction {} is smaller than in transaction {}!".format(order, previous_order))
+                raise Exception("DATE in transaction {} is smaller than in transaction {}, sheet {}!".format(order, previous_order, sheet))
+            previous_date = date
+            previous_order = order
             
         
 
