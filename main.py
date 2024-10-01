@@ -3,7 +3,18 @@ import pandas as pd
 import time
 import argparse
 import os
+import sys
 
+def graceful_exit(message: str):
+    """
+    Exits the program with a message.
+
+    Args:
+        message (str): message to be printed
+    """
+
+    print(message)
+    sys.exit(1)
 
 def validate_transaction_data(transaction: pd.DataFrame, sheet: str):
     """Validates given transaction by checking for specific cases.
@@ -26,44 +37,42 @@ def validate_transaction_data(transaction: pd.DataFrame, sheet: str):
     # TODO (avoid so many ifs?)
     # Checks for missing values
     if pd.isna(date):
-        raise Exception("DATE is missing in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("DATE is missing in transaction order {}, sheet {}".format(order, sheet))
     if pd.isna(transaction_type):
-        raise Exception("TRANSACTION TYPE is missing in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("TRANSACTION TYPE is missing in transaction order {}, sheet {}".format(order, sheet))
     if pd.isna(input_currency):
-        raise Exception("INPUT CURRENCY is missing in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("INPUT CURRENCY is missing in transaction order {}, sheet {}".format(order, sheet))
     if pd.isna(input_amount):
-        raise Exception("INPUT AMOUNT is missing in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("INPUT AMOUNT is missing in transaction order {}, sheet {}".format(order, sheet))
     if pd.isna(output_currency):
-        raise Exception("OUTPUT CURRENCY is missing in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("OUTPUT CURRENCY is missing in transaction order {}, sheet {}".format(order, sheet))
     if pd.isna(output_amount):
-        raise Exception("OUTPUT AMOUNT is missing in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("OUTPUT AMOUNT is missing in transaction order {}, sheet {}".format(order, sheet))
     if pd.isna(note):
-        raise Exception("NOTE is missing in transaction order {}, sheet {}".format(order, sheet))
-    
+        graceful_exit("NOTE is missing in transaction order {}, sheet {}".format(order, sheet))
+
     # Check if input and output amounts are numeric values
     try:
         pd.to_numeric(input_amount)
     except:
-        raise Exception("INPUT CURRENCY is not a numeric value in transaction order {}, sheet {}".format(order, sheet))
+        graceful_exit("INPUT CURRENCY is not a numeric value in transaction order {}, sheet {}".format(order, sheet))
     try:
         pd.to_numeric(output_amount)
     except:
-        raise Exception("OUTPUT CURRENCY is not a numeric value in transaction order {}, sheet {}".format(order, sheet))
-    
+        graceful_exit("OUTPUT CURRENCY is not a numeric value in transaction order {}, sheet {}".format(order, sheet))
+
     # Checks for negative values
     if input_amount < 0:
-        raise Exception("INPUT AMOUNT is negative in transaction {}, sheet {}".format(order, sheet))
+        graceful_exit("INPUT AMOUNT is negative in transaction {}, sheet {}".format(order, sheet))
     if output_amount < 0:
-        raise Exception("OUTPUT AMOUNT is negative in transaction {}, sheet {}".format(order, sheet))
-    
+        graceful_exit("OUTPUT AMOUNT is negative in transaction {}, sheet {}".format(order, sheet))
+
     # Check if date is in correct format, override default exception for readability
     try:
         pd.to_datetime(date)
     except:
-        raise Exception("Incorrect format of DATE in transaction order {}, sheet {}".format(order, sheet))
-    
-    
-    
+        graceful_exit("Incorrect format of DATE in transaction order {}, sheet {}".format(order, sheet))
+
 
 def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int, filename: str):
     """
@@ -118,7 +127,7 @@ def generate_transaction_csv(excel_path: str, sheet: str, header_row_index: int,
             previous_order = order
         else:
             if previous_date > date:
-                raise Exception("DATE in transaction {} is smaller than in transaction {}, sheet {}!".format(order, previous_order, sheet))
+                graceful_exit("DATE in transaction {} is smaller than in transaction {}, sheet {}!".format(order, previous_order, sheet))
             previous_date = date
             previous_order = order
             
@@ -251,13 +260,13 @@ def main():
 
             # Check if needed arguments are provided (SHEET + ROW) and their length is equal
             if not args.sheet:
-                raise Exception("No sheet names were provided!")
+                graceful_exit("No sheet names were provided!")
             
             if not args.row:
-                raise Exception("Index of header row wasn't provided!")
+                graceful_exit("No index of header row was provided!")
             
             if len(args.sheet) != len(args.row):
-                raise Exception("Number of sheets and indices should be equal: {} != {}".format(len(args.sheet), len(args.row)))
+                graceful_exit("Number of sheets and indices should be equal: {} != {}".format(len(args.sheet), len(args.row)))
             
             # Generate needed CSV files
             files = []
@@ -274,12 +283,12 @@ def main():
                     os.remove(file)
 
         else:
-            raise Exception("Missing excel file path!")
+            graceful_exit("Missing excel file path!")
 
     # User only wants to concatenate provided CSV files
     elif args.concatenate:
         if not args.csv:
-            raise Exception("Missing CSV file paths!")
+            graceful_exit("Missing CSV file paths!")
         
         # Concatenate CSV files into a single file
         concatenate_csv(csv_paths=args.csv, filename=out_name)
