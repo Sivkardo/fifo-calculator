@@ -1,20 +1,5 @@
 import os
 
-# Path to excel file with balance and transaction data
-BALANCES_PATH = os.path.abspath('data/balances.xlsx')
-
-# URL of Fifoator
-FIFOATOR_URL = 'https://fifoator.com/'
-
-# Browser
-USER_BROWSER = "firefox"
-
-# Seconds waiting for page to load
-PAGE_LOAD_TIME = 1
-
-# Seconds waiting for FIFO output to download
-DOWNLOAD_WAIT_TIME = 0.2
-
 # Interest transaction types
 INTEREST_TRANS_TYPE = ("Interest", "Staking Rewards")
 
